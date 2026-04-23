@@ -1,6 +1,8 @@
 # munk/api/routes.py
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import os
@@ -127,3 +129,11 @@ def export(manifest_id: str, req: ExportRequest):
         return {"output_path": str(path)}
     except (AssemblyError, ValidationError) as e:
         raise HTTPException(422, str(e))
+
+# ── Static Files ─────────────────────────────────────────────────────────────
+
+@app.get("/")
+def read_index():
+    return FileResponse("web/index.html")
+
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
