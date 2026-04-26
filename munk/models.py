@@ -103,6 +103,7 @@ class Chunk:
     def __post_init__(self):
         if self.status not in CHUNK_STATUSES:
             raise ValueError(f"Invalid chunk status: {self.status!r}. Must be one of {CHUNK_STATUSES}")
+        # Note: content_hash is managed by SourceChunkAdapter, not recalculated here.
 
     def to_dict(self) -> dict:
         return asdict(self)
