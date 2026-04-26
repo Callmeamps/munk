@@ -73,7 +73,7 @@ class SimpleChunker:
         return first[:60]
 
     def chunkify(
-        self, source: Source, file_content: str, store: MunkStore, config: ChunkingConfig = DEFAULT_CONFIG
+        self, source: Source, file_content: str, store: MunkStore, config: ChunkingConfig = DEFAULT_CONFIG, author_agent: str = "user"
     ) -> Manifest:
         """Split a source file into Chunk objects and save them to the store."""
         ext = _ext(source.path)
@@ -114,7 +114,7 @@ class SimpleChunker:
                 title=title,
                 description="",
                 tags=["simple"],
-                author_agent="simple-chunker",
+                author_agent=author_agent,
             )
             chunks.append(chunk)
             chunk_ids.append(chunk_id)
@@ -171,6 +171,7 @@ def chunkify(
     store: MunkStore,
     strategy: str = "simple",
     config: ChunkingConfig = DEFAULT_CONFIG,
+    author_agent: str = "user",
 ) -> Manifest:
     """
     Split a source file into Chunk objects and save them to the store.
@@ -184,4 +185,4 @@ def chunkify(
         Manifest describing the chunks and their order.
     """
     chunker = create_chunker(strategy, config)
-    return chunker.chunkify(source, file_content, store, config)
+    return chunker.chunkify(source, file_content, store, config, author_agent)

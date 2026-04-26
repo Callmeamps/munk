@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from munk.ids import new_id
 from munk.models import Chunk, ChunkHistory
-from munk.store import MunkStore
+from munk.store import MunkStore, NotFoundError, StoreError
 from munk.adapters.source_chunk_adapter import SourceChunkAdapter
 
 def _now() -> str:
@@ -33,7 +33,21 @@ def edit_chunk(
     if not new_content.strip():
         raise EditError("new_content must not be empty.")
     chunk = store.load_chunk(chunk_id)
-    source = store.load_source(chunk.source_id)
+    try:
+        source = store.load_source(chunk.source_id)
+    except NotFoundError:
+        # Create minimal dummy source for adapter compatibility
+        from munk.models import Source
+        source = Source(
+            source_id=chunk.source_id,
+            path="",
+            hash="",
+            size_bytes=0,
+            mime_type="text/plain",
+            created_at=_now(),
+            origin="local",
+            status="locked",
+        )
     if chunk.status in ("locked", "archived"):
         raise EditError(
             f"Cannot edit chunk {chunk_id!r}: status is {chunk.status!r}."

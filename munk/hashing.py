@@ -30,6 +30,10 @@ def hash_file(path: str) -> str:
     return f"sha256:{h.hexdigest()}"
 
 
+# Alias for backward compatibility
+compute_content_hash = hash_content
+
+
 def verify_content(content: str, expected_hash: str) -> bool:
     """
     Return True if content matches the expected hash.
