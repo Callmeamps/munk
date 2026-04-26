@@ -67,15 +67,10 @@ def edit_chunk(
         adapter.chunk.status = status
 
     store.save_chunk(adapter.chunk)
-    history = ChunkHistory(
-        history_id=new_id("hist"),
+    store.history_adapter.log_edit(
         chunk_id=chunk_id,
         version=adapter.chunk.version,
-        action="edit",
-        timestamp=adapter.chunk.updated_at,
         actor=actor,
-        diff_ref=None,
         note=note,
     )
-    store.append_history(history)
     return adapter.chunk
