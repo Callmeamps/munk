@@ -8,6 +8,19 @@ from typing import Optional
 from munk.models import Source, Chunk, Manifest, ChunkHistory, Lock
 
 
+class StoreError(Exception):
+    """Base exception for store errors."""
+    pass
+
+class NotFoundError(StoreError):
+    """Raised when a requested object is not found."""
+    pass
+
+class CorruptedError(StoreError):
+    """Raised when a stored object's JSON is corrupted."""
+    pass
+
+
 class MunkStore:
     """
     Flat-file JSON store for all Munk objects.
@@ -47,7 +60,12 @@ class MunkStore:
         tmp.rename(path)
 
     def _read_json(self, path: Path) -> dict:
-        return json.loads(path.read_text(encoding="utf-8"))
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            raise NotFoundError(f"File not found: {path}")
+        except json.JSONDecodeError as e:
+            raise CorruptedError(f"Corrupted JSON in {path}: {e}")
 
     # -----------------------------------------------------------------------
     # Source (write-once)
@@ -82,6 +100,9 @@ class MunkStore:
 
     def list_chunks(self) -> list[str]:
         return [p.stem for p in (self.root / "chunks").glob("*.json")]
+    
+    def list_sources(self) -> list[str]:
+        return [p.stem for p in (self.root / "sources").glob("*.json")]
 
     # -----------------------------------------------------------------------
     # Manifest

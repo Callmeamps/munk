@@ -29,3 +29,17 @@ testpaths = ["tests"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["munk*"]
+
+[tool.coverage.run]
+source = ["munk"]
+
+[tool.coverage.report]
+fail_under = 80
+omit = [
+    "munk/api/routes.py",
+    "munk/tui/*",
+    "munk/contextual_enrichment.py",
+    "munk/hierarchical_rag.py",
+    "munk/enrich_and_test.py",
+    "munk/create_test_data.py",
+]

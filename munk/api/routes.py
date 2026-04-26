@@ -6,9 +6,10 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List
 import os
+import logging
 from datetime import datetime, timezone
 
-from munk.store import MunkStore
+from munk.store import MunkStore, StoreError, NotFoundError, CorruptedError
 from munk.models import Source
 from munk.ids import new_id
 from munk.hashing import hash_content
@@ -20,6 +21,18 @@ from munk.validator import ValidationError
 
 app = FastAPI(title="Munk API", version="0.1.0")
 store = MunkStore(os.getenv("MUNK_DATA_ROOT", "munk_data"))
+
+@app.exception_handler(NotFoundError)
+async def not_found_handler(request, exc):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+@app.exception_handler(CorruptedError)
+async def corrupted_handler(request, exc):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+@app.exception_handler(StoreError)
+async def store_error_handler(request, exc):
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 # ── Request/Response models ──────────────────────────────────────────────────
 
@@ -65,7 +78,10 @@ def create_source(req: CreateSourceRequest):
         origin     = req.origin,
         status     = "locked",
     )
-    store.save_source(source)
+    try:
+        store.save_source(source)
+    except FileExistsError:
+        raise HTTPException(409, f"Source {source_id} already exists.")
     # Save raw content for the chunker
     content_path = store.root / "sources" / f"{source_id}.content"
     content_path.write_text(req.content, encoding="utf-8")
@@ -78,7 +94,18 @@ def chunkify_source(source_id: str, req: ChunkifyRequest):
     
     source = store.load_source(source_id)
     content_path = store.root / "sources" / f"{source_id}.content"
-    content = content_path.read_text(encoding="utf-8")
+    try:
+        content = content_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise HTTPException(404, f"Content for source {source_id} not found.")
+    
+    # Validate content integrity
+    content_hash = hash_content(content)
+    if content_hash != source.hash:
+        logging.warning(
+            f"Content hash mismatch for source {source_id}. "
+            f"Stored: {source.hash}, Actual: {content_hash}"
+        )
     
     manifest = chunkify(source, content, store, author_agent=req.author_agent)
     return {"manifest_id": manifest.manifest_id, "chunk_ids": manifest.order}
@@ -103,6 +130,8 @@ def patch_chunk(chunk_id: str, req: EditChunkRequest):
             note        = req.note,
         )
         return updated.to_dict()
+    except NotFoundError:
+        raise HTTPException(404, f"Chunk {chunk_id} not found.")
     except EditError as e:
         raise HTTPException(409, str(e))
 
