@@ -30,7 +30,7 @@ def assemble(
     except Exception as e:
         raise AssemblyError(f"Validation failed: {e}")
 
-    content = separator.join(chunk.content for chunk in chunks)
+    content = manifest.export(store)
     output_path = store.write_export(output_filename, content)
 
     return output_path

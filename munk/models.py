@@ -11,9 +11,7 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# ---------------------------------------------------------------------------
-# Source
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- # Manifest # ---------------------------------------------------------------------------
 
 @dataclass
 class Source:
@@ -53,9 +51,7 @@ class Source:
         return cls(**d)
 
 
-# ---------------------------------------------------------------------------
-# Chunk
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- # Manifest # ---------------------------------------------------------------------------
 
 CHUNK_STATUSES = {"draft", "reviewed", "approved", "locked", "archived"}
 
@@ -116,55 +112,17 @@ class Chunk:
         return cls(**d)
 
 
-# ---------------------------------------------------------------------------
-# Manifest
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- # Manifest # ---------------------------------------------------------------------------
 
 EXPORT_MODES = {"rebuild"}
 
 @dataclass
-class Manifest:
-    """
-    Reconstruction plan for a file.
+# --------------------------------------------------------------------------- # Manifest # ---------------------------------------------------------------------------
 
-    A manifest defines which chunks are included in the output and in what order.
-    The `order` field is the authoritative sequence for export.
-
-    Fields:
-        manifest_id:  Unique identifier, e.g. "man_0a1b2c"
-        source_id:    The source this manifest was built from
-        chunks:       Unordered set of chunk IDs belonging to this manifest
-        order:        Ordered list of chunk IDs for reconstruction
-        export_mode:  "rebuild" — concatenate chunks in order
-        created_at:   ISO 8601 UTC timestamp
-    """
-    manifest_id: str
-    source_id:   str
-    chunks:      list[str]
-    order:       list[str]
-    created_at:  str
-    export_mode: str = "rebuild"
-
-    def __post_init__(self):
-        if self.export_mode not in EXPORT_MODES:
-            raise ValueError(f"Invalid export_mode: {self.export_mode!r}")
-        if set(self.chunks) != set(self.order):
-            raise ValueError("Manifest `chunks` and `order` must contain the same chunk IDs")
-
-    def to_dict(self) -> dict:
-        return asdict(self)
-
-    def to_json(self) -> str:
-        return json.dumps(self.to_dict(), indent=2)
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "Manifest":
         return cls(**d)
 
 
-# ---------------------------------------------------------------------------
-# ChunkHistory
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- # Manifest # ---------------------------------------------------------------------------
 
 HISTORY_ACTIONS = {"create", "edit", "split", "merge", "clone", "lock", "unlock", "archive"}
 
@@ -210,9 +168,7 @@ class ChunkHistory:
         return cls(**d)
 
 
-# ---------------------------------------------------------------------------
-# Lock
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- # Manifest # ---------------------------------------------------------------------------
 
 @dataclass
 class Lock:
@@ -243,4 +199,73 @@ class Lock:
 
     @classmethod
     def from_dict(cls, d: dict) -> "Lock":
+        return cls(**d)
+@dataclass
+class Manifest:
+    """ Reconstruction plan for a file with behavior-focused methods.
+    A manifest defines which chunks are included in the output and in what order.
+    The `order` field is the authoritative sequence for export.
+    Fields:
+        manifest_id: Unique identifier, e.g. "man_0a1b2c"
+        source_id: The source this manifest was built from
+        chunks: Unordered set of chunk IDs belonging to this manifest
+        order: Ordered list of chunk IDs for reconstruction
+        export_mode: "rebuild" — concatenate chunks in order
+        created_at: ISO 8601 UTC timestamp
+    """
+    manifest_id: str
+    source_id: str
+    chunks: list[str]
+    order: list[str]
+    created_at: str
+    export_mode: str = "rebuild"
+
+    def __post_init__(self):
+        if self.export_mode not in EXPORT_MODES:
+            raise ValueError(f"Invalid export_mode: {self.export_mode!r}")
+        self._validate_order()
+
+    def _validate_order(self) -> None:
+        """Validate that `order` matches `chunks`."""
+        if set(self.chunks) != set(self.order):
+            raise ValueError("Manifest `chunks` and `order` must contain the same chunk IDs")
+
+    def add_chunk(self, chunk_id: str, position: int) -> None:
+        """Add a chunk to the manifest at the given position."""
+        if chunk_id in self.chunks:
+            raise ValueError(f"Chunk {chunk_id!r} already exists in the manifest.")
+        if position < 0 or position > len(self.order):
+            raise ValueError("Position out of bounds.")
+        self.chunks.append(chunk_id)
+        self.order.insert(position, chunk_id)
+
+    def remove_chunk(self, chunk_id: str) -> None:
+        """Remove a chunk from the manifest."""
+        if chunk_id not in self.chunks:
+            raise ValueError(f"Chunk {chunk_id!r} not found in the manifest.")
+        self.chunks.remove(chunk_id)
+        self.order.remove(chunk_id)
+
+    def reorder(self, new_order: list[str]) -> None:
+        """Reorder the chunks in the manifest."""
+        if set(new_order) != set(self.chunks):
+            raise ValueError("New order must contain all chunk IDs in the manifest.")
+        self.order = new_order
+
+    def export(self, store: "MunkStore") -> str:
+        """Export the manifest as a single string by concatenating chunks in order."""
+        assembled = []
+        for chunk_id in self.order:
+            chunk = store.load_chunk(chunk_id)
+            assembled.append(chunk.content)
+        return "".join(assembled)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Manifest":
         return cls(**d)
