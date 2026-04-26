@@ -5,7 +5,7 @@ Demonstrates integration with munk project.
 
 import asyncio
 from pathlib import Path
-from munk.contextual_enrichment import ContextualEnricher
+from munk.adapters.contextual_enrichment_adapter import ContextualEnrichmentAdapter
 from munk.hierarchical_rag import HierarchicalRetriever
 from munk.models import Source
 from munk.store import MunkStore
@@ -17,7 +17,7 @@ async def test_contextual_enrichment():
     
     # Initialize
     store = MunkStore("munk_data")
-    enricher = ContextualEnricher("test-key")  # Replace with real API key
+    enricher = ContextualEnrichmentAdapter("test-key")  # Replace with real API key
     
     # Get first source
     # Only use supported extension sources (gd, md, txt, json)
@@ -36,7 +36,7 @@ async def test_contextual_enrichment():
     print(f"Enriching source: {source_id} ({store.load_source(source_id).path})")
     
     try:
-        enriched_chunks = await enricher.enrich_source_chunks(source_id, store)
+        enriched_chunks = await enricher.enrich_source(source_id, store)
         print(f"Enriched {len(enriched_chunks)} chunks")
         
         # Show example
