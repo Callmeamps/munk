@@ -1,6 +1,11 @@
+"""Tests for lock operations - now using LockAdapter.
+
+These tests verify behavior through the adapter interface.
+"""
 import pytest
+import tempfile
 from munk.store import MunkStore
-from munk.locker import lock_chunk, unlock_chunk, LockError
+from munk.adapters.lock_adapter import LockAdapter, LockError
 from munk.models import Chunk
 
 
@@ -20,40 +25,50 @@ def _make_chunk(store, chunk_id="chk_123"):
 
 
 def test_lock_chunk_success(tmp_path):
+    """lock_chunk success - now uses LockAdapter.acquire()."""
     store = MunkStore(str(tmp_path))
     _make_chunk(store)
-    lock = lock_chunk("chk_123", "alice", store, "editing")
+    adapter = LockAdapter(store)
+    lock = adapter.acquire("chk_123", "alice", reason="editing")
     assert lock.chunk_id == "chk_123"
     assert lock.owner == "alice"
     assert store.is_locked("chk_123")
 
 
 def test_lock_chunk_already_locked(tmp_path):
+    """lock_chunk fails if already locked - now uses LockAdapter."""
     store = MunkStore(str(tmp_path))
     _make_chunk(store)
-    lock_chunk("chk_123", "alice", store)
+    adapter = LockAdapter(store)
+    adapter.acquire("chk_123", "alice")
     with pytest.raises(LockError):
-        lock_chunk("chk_123", "bob", store)
+        adapter.acquire("chk_123", "bob")
 
 
 def test_unlock_chunk_success(tmp_path):
+    """unlock_chunk success - now uses LockAdapter.release()."""
     store = MunkStore(str(tmp_path))
     _make_chunk(store)
-    lock_chunk("chk_123", "alice", store)
-    unlock_chunk("chk_123", "alice", store)
+    adapter = LockAdapter(store)
+    adapter.acquire("chk_123", "alice")
+    adapter.release("chk_123", "alice")
     assert not store.is_locked("chk_123")
 
 
 def test_unlock_chunk_wrong_owner(tmp_path):
+    """unlock_chunk fails if wrong owner - now uses LockAdapter."""
     store = MunkStore(str(tmp_path))
     _make_chunk(store)
-    lock_chunk("chk_123", "alice", store)
+    adapter = LockAdapter(store)
+    adapter.acquire("chk_123", "alice")
     with pytest.raises(LockError):
-        unlock_chunk("chk_123", "bob", store)
+        adapter.release("chk_123", "bob")
 
 
 def test_unlock_chunk_not_locked(tmp_path):
+    """unlock_chunk fails if not locked - now uses LockAdapter."""
     store = MunkStore(str(tmp_path))
     _make_chunk(store)
+    adapter = LockAdapter(store)
     with pytest.raises(LockError):
-        unlock_chunk("chk_123", "alice", store)
+        adapter.release("chk_123", "alice")

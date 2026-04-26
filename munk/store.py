@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from munk.adapters.chunk_store_adapter import ChunkStore
+    from munk.adapters.lock_adapter import LockAdapter
 
 
 class StoreError(Exception):
@@ -48,11 +49,18 @@ class MunkStore:
         self._init_dirs()
         from munk.adapters.chunk_store_adapter import ChunkStore
         self._chunk_store = ChunkStore(self)
+        from munk.adapters.lock_adapter import LockAdapter
+        self._lock_adapter = LockAdapter(self)
 
     @property
     def chunk_store(self) -> "ChunkStore":
         """Access the ChunkStore adapter for behavior-focused chunk operations."""
         return self._chunk_store
+
+    @property
+    def lock_adapter(self) -> "LockAdapter":
+        """Access the LockAdapter for behavior-focused lock operations."""
+        return self._lock_adapter
 
     def _init_dirs(self):
         for d in ["sources", "chunks", "manifests", "history", "locks", "exports", "diffs", "policies"]:

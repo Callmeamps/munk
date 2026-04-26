@@ -15,7 +15,7 @@ from munk.ids import new_id
 from munk.hashing import hash_content
 from munk.chunker import chunkify
 from munk.editor import edit_chunk, EditError
-from munk.locker import lock_chunk, unlock_chunk, LockError
+from munk.locker import LockError  # Deprecated: use store.lock_adapter
 from munk.assembler import assemble, AssemblyError
 from munk.validator import ValidationError
 
@@ -138,7 +138,7 @@ def patch_chunk(chunk_id: str, req: EditChunkRequest):
 @app.post("/chunks/{chunk_id}/lock")
 def lock(chunk_id: str, req: LockRequest):
     try:
-        lock_obj = lock_chunk(chunk_id, req.owner, store, req.reason)
+        lock_obj = store.lock_adapter.acquire(chunk_id, req.owner, req.reason)
         return lock_obj.to_dict()
     except LockError as e:
         raise HTTPException(409, str(e))
@@ -146,7 +146,7 @@ def lock(chunk_id: str, req: LockRequest):
 @app.post("/chunks/{chunk_id}/unlock")
 def unlock(chunk_id: str, req: UnlockRequest):
     try:
-        unlock_chunk(chunk_id, req.owner, store)
+        store.lock_adapter.release(chunk_id, req.owner)
         return {"status": "unlocked"}
     except LockError as e:
         raise HTTPException(409, str(e))

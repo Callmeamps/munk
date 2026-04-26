@@ -6,7 +6,6 @@ from munk.store import MunkStore
 from munk.models import Chunk, _now
 from munk.hashing import hash_content
 from munk.editor import edit_chunk, EditError
-from munk.locker import lock_chunk
 
 def test_edit_chunk_success():
     with tempfile.TemporaryDirectory() as tmp:
@@ -42,7 +41,7 @@ def test_edit_locked_chunk_fails():
         )
         store.save_chunk(chunk)
         
-        lock_chunk(cid, owner="user_1", store=store)
+        store.lock_adapter.acquire(cid, owner="user_1")
         
         with pytest.raises(EditError, match="active lock"):
             edit_chunk(cid, "new content", store)
