@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Optional
 
 from munk.models import Source, Chunk, Manifest, ChunkHistory, Lock
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from munk.adapters.chunk_store_adapter import ChunkStore
 
 
 class StoreError(Exception):
@@ -42,6 +46,13 @@ class MunkStore:
     def __init__(self, data_root: str = "munk_data"):
         self.root = Path(data_root)
         self._init_dirs()
+        from munk.adapters.chunk_store_adapter import ChunkStore
+        self._chunk_store = ChunkStore(self)
+
+    @property
+    def chunk_store(self) -> "ChunkStore":
+        """Access the ChunkStore adapter for behavior-focused chunk operations."""
+        return self._chunk_store
 
     def _init_dirs(self):
         for d in ["sources", "chunks", "manifests", "history", "locks", "exports", "diffs", "policies"]:
