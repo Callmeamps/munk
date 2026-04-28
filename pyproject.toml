@@ -18,6 +18,10 @@ dev = [
     "httpx>=0.27",       # required for FastAPI test client
     "pytest-cov>=5.0",
 ]
+semantic = [
+    "sentence-transformers>=2.2.0",
+    "scikit-learn>=1.3.0",
+]
 
 [project.scripts]
 munk-api = "munk.api.routes:app"

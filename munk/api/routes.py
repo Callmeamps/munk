@@ -13,6 +13,7 @@ from munk.store import MunkStore, StoreError, NotFoundError, CorruptedError
 from munk.models import Source
 from munk.ids import new_id
 from munk.hashing import hash_content
+from munk.api.health import router as health_router
 from munk.chunker import chunkify
 from munk.editor import edit_chunk, EditError
 from munk.locker import LockError  # Deprecated: use store.lock_adapter
@@ -20,6 +21,7 @@ from munk.assembler import assemble, AssemblyError
 from munk.validator import ValidationError
 
 app = FastAPI(title="Munk API", version="0.1.0")
+app.include_router(health_router, prefix="/health", tags=["health"])
 store = MunkStore(os.getenv("MUNK_DATA_ROOT", "munk_data"))
 
 @app.exception_handler(NotFoundError)
